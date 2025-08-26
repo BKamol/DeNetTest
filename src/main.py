@@ -1,10 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
-from polygonrpc import (get_balance, get_balance_batch,
-                        get_top, get_top_with_transactions,
-                        get_token_info)
-
+from polygonrpc import get_balance, get_balance_batch, get_top, get_top_with_transactions, get_token_info
 
 app = FastAPI()
 

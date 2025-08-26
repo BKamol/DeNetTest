@@ -6,19 +6,18 @@ import asyncio
 from dotenv import load_dotenv
 from datetime import datetime
 
-
 load_dotenv()
 
 # Настройка Web3 для Polygon
 POLYGON_RPC_URL = os.getenv("POLYGON_RPC_URL")
-POLYGONSCAN_API_KEY = os.getenv("POLYGONSCAN_API_KEY")
-if not POLYGON_RPC_URL or not POLYGONSCAN_API_KEY:
-    raise ValueError("POLYGON_RPC_URL or POLYGONSCAN_API_KEY not set in .env")
+ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
+TOKEN_ADDRESS = os.getenv("TOKEN_ADDRESS")
+if not POLYGON_RPC_URL or not ETHERSCAN_API_KEY or not TOKEN_ADDRESS:
+    raise ValueError("POLYGON_RPC_URL, ETHERSCAN_API_KEY, or TOKEN_ADDRESS not set in .env")
 
 web3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(POLYGON_RPC_URL))
 
-
-TOKEN_ADDRESS = os.getenv("TOKEN_ADDRESS")
+# Стандартный ABI ERC20
 ERC20_ABI = [
     {
         "constant": True,
@@ -67,7 +66,7 @@ ERC20_ABI = [
     }
 ]
 
-
+# Создаем экземпляр контракта
 contract = web3.eth.contract(address=Web3.to_checksum_address(TOKEN_ADDRESS), abi=ERC20_ABI)
 
 # Кэш для decimals
@@ -96,27 +95,43 @@ async def get_balance_batch(addresses: List[str]) -> List[float]:
     return [balance / (10 ** decimals) if isinstance(balance, int) else 0 for balance in balances]
 
 async def get_token_holders() -> List[str]:
-    """Получение списка держателей токена через PolygonScan API."""
+    """Получение списка держателей токена через Etherscan V2 API."""
+    await asyncio.sleep(0.2)  # Задержка для rate limit
     async with aiohttp.ClientSession() as session:
-        url = f"https://api.polygonscan.com/api?module=token&action=tokenholderlist&contractaddress={TOKEN_ADDRESS}&apikey={POLYGONSCAN_API_KEY}"
+        url = f"https://api.etherscan.io/v2/address/{TOKEN_ADDRESS}/tokentx?chainid=137&apikey={ETHERSCAN_API_KEY}"
         async with session.get(url) as response:
-            data = await response.json()
-            if data["status"] == "1":
-                return [holder["address"] for holder in data["result"]]
-            else:
-                raise ValueError(f"PolygonScan API error: {data['message']}")
+            if response.status != 200:
+                raise ValueError(f"Etherscan V2 API error: HTTP {response.status}")
+            try:
+                data = await response.json()
+            except Exception as e:
+                raise ValueError(f"Etherscan V2 API error: Failed to parse JSON: {str(e)}")
+            if data.get("status") != "success":
+                raise ValueError(f"Etherscan V2 API error: {data.get('message', 'NOTOK')} - {data.get('error', 'No details provided')}")
+            holders = set()
+            for tx in data.get("data", {}).get("transactions", []):
+                if "from" in tx:
+                    holders.add(tx["from"])
+                if "to" in tx:
+                    holders.add(tx["to"])
+            return list(holders)
 
 async def get_last_transaction_date(address: str) -> str:
-    """Получение даты последней транзакции для адреса через PolygonScan API."""
+    """Получение даты последней транзакции для адреса через Etherscan V2 API."""
+    await asyncio.sleep(0.2)  # Задержка для rate limit
     async with aiohttp.ClientSession() as session:
-        url = f"https://api.polygonscan.com/api?module=account&action=tokentx&contractaddress={TOKEN_ADDRESS}&address={address}&sort=desc&apikey={POLYGONSCAN_API_KEY}"
+        url = f"https://api.etherscan.io/v2/address/{address}/tokentx?chainid=137&contractaddress={TOKEN_ADDRESS}&sort=desc&apikey={ETHERSCAN_API_KEY}"
         async with session.get(url) as response:
-            data = await response.json()
-            if data["status"] == "1" and data["result"]:
-                # Получаем timestamp последней транзакции
-                timestamp = int(data["result"][0]["timeStamp"])
-                return datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d")
-            return "No transactions found"
+            if response.status != 200:
+                raise ValueError(f"Etherscan V2 API error: HTTP {response.status}")
+            try:
+                data = await response.json()
+            except Exception as e:
+                raise ValueError(f"Etherscan V2 API error: Failed to parse JSON: {str(e)}")
+            if data.get("status") != "success" or not data.get("data", {}).get("transactions"):
+                return "No transactions found"
+            timestamp = int(data["data"]["transactions"][0]["timeStamp"])
+            return datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d")
 
 async def get_top(n: int) -> List[Tuple[str, float]]:
     """Получение топ-N адресов по балансам."""
@@ -130,7 +145,6 @@ async def get_top(n: int) -> List[Tuple[str, float]]:
 async def get_top_with_transactions(n: int) -> List[Tuple[str, float, str]]:
     """Получение топ-N адресов с датами транзакций."""
     top = await get_top(n)
-    # Асинхронно запрашиваем даты последних транзакций
     tasks = [get_last_transaction_date(addr) for addr, _ in top]
     dates = await asyncio.gather(*tasks, return_exceptions=True)
     return [(addr, bal, date if isinstance(date, str) else "Error") for (addr, bal), date in zip(top, dates)]
@@ -149,3 +163,4 @@ async def get_token_info() -> Dict:
         "totalSupply": total_supply / (10 ** decimals),
         "decimals": decimals
     }
+    
