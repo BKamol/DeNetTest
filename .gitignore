@@ -16,7 +16,7 @@ pip-wheel-metadata/
 .pypirc
 
 #Virtual environments
-
+.env
 venv/ 
 env/ 
 .venv/ 
