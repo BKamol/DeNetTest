@@ -1,0 +1,90 @@
+#Python
+
+*.pyc 
+pycache/ 
+*.pyo 
+*.pyd 
+.Python 
+build/ 
+dist/ 
+*.egg-info/ 
+*.egg 
+*.eggs/ 
+eggs/ 
+*.whl 
+pip-wheel-metadata/ 
+.pypirc
+
+#Virtual environments
+
+venv/ 
+env/ 
+.venv/ 
+.env/ 
+virtualenv/ 
+ENV/ 
+.venv
+
+#FastAPI and dependencies
+
+*.log .log.logs/ *.cache .cache/ *.pytest_cache/ .pytest_cache/ coverage/ .coverage htmlcov/ *.cover .coverage.
+
+#VS Code
+
+.vscode/ !.vscode/settings.json !.vscode/tasks.json !.vscode/launch.json !.vscode/extensions.json
+
+#Environment variables
+
+.env *.env .env..envrc
+
+#Dependency management
+
+Pipfile.lock poetry.lock
+
+#Testing
+
+*.test *.tests tests/pycache/ test/pycache/
+
+#MacOS
+
+.DS_Store .AppleDouble .LSOverride
+
+#Windows
+
+Thumbs.db ehthumbs.db Desktop.ini
+
+#Linux
+
+*~
+
+#IDEs and editors
+
+.idea/ *.sublime-project *.sublime-workspace
+
+#Byte-compiled / optimized / DLL files
+
+pycache/ *.py[cod] *$py.class
+
+#Distribution / packaging
+
+.Python build/ develop-eggs/ dist/ downloads/ eggs/ .eggs/ lib/ lib64/ parts/ sdist/ var/ wheels/ *.egg-info/ .installed.cfg *.egg
+
+#Jupyter Notebook
+
+.ipynb_checkpoints
+
+#mypy
+
+.mypy_cache/ .dmypy.json dmypy.json
+
+#ruff
+
+.ruff_cache/
+
+#Databases
+
+*.db *.sqlite *.sqlite3
+
+#Miscellaneous
+
+*.swp *~ .project .pydevproject .cproject .pyo .pyd *.bak *.tmp *.swp *~ *.log *.pid *.seed *.pid.lock *.pem *.key *.cer *.crt *.pub
